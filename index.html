@@ -1,0 +1,1941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sheitel Spot — Sales Intelligence</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Manrope:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+<!-- Libraries -->
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<style>
+:root {
+  --bg: #faf6f1;
+  --bg-2: #f3ece2;
+  --ink: #1c1010;
+  --ink-2: #4a3434;
+  --paper: #fffcf7;
+  --line: #e6dcc9;
+  --line-2: #d6c8af;
+
+  /* Brand palette — aubergine + champagne */
+  --plum: #4a1e35;
+  --plum-2: #6b2d4d;
+  --plum-3: #8a3d65;
+  --wine: #7a1f3d;
+  --rose: #c08977;
+  --gold: #b08350;
+  --gold-2: #d4a96e;
+  --cream: #f5e6cf;
+
+  /* Choropleth scale */
+  --c0: #f5e6d3;
+  --c1: #e9c5a3;
+  --c2: #d49b76;
+  --c3: #a85d4c;
+  --c4: #7a1f3d;
+  --c5: #4a1e35;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Manrope', -apple-system, sans-serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  background-image:
+    radial-gradient(1200px 600px at 100% -10%, rgba(122, 31, 61, 0.06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgba(176, 131, 80, 0.07), transparent 60%);
+}
+
+.serif { font-family: 'Fraunces', 'Cormorant Garamond', Georgia, serif; }
+
+/* Header */
+header.shell {
+  padding: 28px 48px 24px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  background: rgba(255, 252, 247, 0.7);
+  backdrop-filter: blur(10px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+}
+.brand .mono {
+  font-family: 'Fraunces', serif;
+  font-weight: 300;
+  font-style: italic;
+  font-size: 14px;
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+.brand h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+  color: var(--plum);
+}
+.brand h1 em {
+  font-style: italic;
+  font-weight: 300;
+  color: var(--ink-2);
+}
+.brand .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--gold);
+  margin: 0 4px 4px;
+}
+
+.tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid transparent;
+}
+.tab {
+  font-family: 'Fraunces', serif;
+  font-size: 15px;
+  letter-spacing: 0.02em;
+  padding: 8px 22px;
+  cursor: pointer;
+  color: var(--ink-2);
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-weight: 400;
+}
+.tab:hover { color: var(--plum); }
+.tab.active {
+  color: var(--plum);
+  border-bottom-color: var(--plum);
+  font-weight: 500;
+}
+
+/* Upload screen */
+.upload-screen {
+  min-height: calc(100vh - 88px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+}
+.upload-card {
+  max-width: 580px;
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 64px 56px;
+  position: relative;
+  text-align: center;
+}
+.upload-card::before, .upload-card::after {
+  content: '';
+  position: absolute;
+  width: 40px; height: 40px;
+  border: 1px solid var(--gold);
+}
+.upload-card::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.upload-card::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
+
+.upload-card .ornament {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold);
+  font-size: 14px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.upload-card h2 {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: 38px;
+  line-height: 1.1;
+  margin-bottom: 14px;
+  color: var(--plum);
+  letter-spacing: -0.02em;
+}
+.upload-card h2 em { font-style: italic; font-weight: 300; }
+.upload-card p {
+  color: var(--ink-2);
+  margin-bottom: 36px;
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+  font-size: 14px;
+}
+.drop {
+  display: block;
+  border: 1px dashed var(--line-2);
+  padding: 40px 24px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  background: var(--bg);
+}
+.drop input[type="file"] {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.drop:hover, .drop.over {
+  border-color: var(--plum);
+  background: var(--cream);
+}
+.drop .icon {
+  font-family: 'Fraunces', serif;
+  font-size: 36px;
+  color: var(--plum);
+  margin-bottom: 12px;
+  font-style: italic;
+}
+.drop .label { font-weight: 500; color: var(--ink); margin-bottom: 6px; }
+.drop .hint { font-size: 13px; color: var(--ink-2); }
+
+/* Dashboard layout */
+.dashboard {
+  display: none;
+  padding: 32px 48px 64px;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+.dashboard.active { display: block; }
+
+/* Time range chips */
+.time-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.time-label {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--ink-2);
+  font-size: 14px;
+  letter-spacing: 0.05em;
+}
+.chips {
+  display: flex;
+  gap: 4px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 4px;
+}
+.chip {
+  font-family: 'Manrope', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 8px 18px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  color: var(--ink-2);
+  transition: all 0.2s ease;
+  letter-spacing: 0.02em;
+}
+.chip:hover { color: var(--plum); }
+.chip.active {
+  background: var(--plum);
+  color: var(--paper);
+}
+.file-info {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.file-info button {
+  background: none;
+  border: none;
+  color: var(--plum);
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+  font-style: italic;
+  font-size: 13px;
+}
+
+/* KPI grid */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+.kpi {
+  background: var(--paper);
+  padding: 28px 28px;
+  position: relative;
+}
+.kpi .eyebrow {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+  text-transform: lowercase;
+  margin-bottom: 12px;
+}
+.kpi .number {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: 38px;
+  letter-spacing: -0.025em;
+  color: var(--plum);
+  line-height: 1;
+}
+.kpi .number .small {
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--ink-2);
+  margin-left: 2px;
+}
+.kpi .sub {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.kpi .sub strong { color: var(--plum); font-weight: 600; }
+
+/* Cards */
+.card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  padding: 28px 32px;
+  margin-bottom: 24px;
+  position: relative;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 14px;
+}
+.card-head h3 {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  color: var(--plum);
+}
+.card-head h3 em { font-style: italic; font-weight: 300; color: var(--ink-2); }
+.card-head .sub {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+
+.chart-wrap { position: relative; height: 320px; }
+.chart-wrap.tall { height: 380px; }
+.chart-wrap.short { height: 240px; }
+
+/* Tables */
+table.elegant {
+  width: 100%;
+  border-collapse: collapse;
+}
+table.elegant th, table.elegant td {
+  text-align: left;
+  padding: 12px 8px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--line);
+}
+table.elegant th {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  font-weight: 400;
+  color: var(--gold);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+table.elegant td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+table.elegant tr:last-child td { border-bottom: none; }
+table.elegant td.name { font-weight: 500; color: var(--plum); }
+
+/* Map */
+#map { height: 540px; border: 1px solid var(--line); background: var(--bg-2); }
+.leaflet-container {
+  background: var(--bg-2) !important;
+  font-family: 'Manrope', sans-serif;
+}
+
+/* Tooltip popup */
+.tip {
+  font-family: 'Manrope', sans-serif;
+  min-width: 220px;
+}
+.tip .tip-name {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 18px;
+  color: var(--plum);
+  margin-bottom: 4px;
+}
+.tip .tip-loc {
+  font-style: italic;
+  font-size: 12px;
+  color: var(--ink-2);
+  margin-bottom: 10px;
+  font-family: 'Fraunces', serif;
+}
+.tip .tip-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.tip .tip-row strong { color: var(--plum); }
+.tip .tip-section {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--gold);
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Legend */
+.map-legend {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-top: none;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.legend-scale { display: flex; flex: 1; height: 12px; }
+.legend-scale span { flex: 1; }
+.legend-label {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+}
+
+/* Notice */
+.notice {
+  background: var(--cream);
+  border-left: 3px solid var(--gold);
+  padding: 12px 18px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--ink-2);
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+}
+.notice strong { color: var(--plum); font-style: normal; font-family: 'Manrope', sans-serif; font-weight: 600; }
+
+/* Empty / error */
+.empty {
+  padding: 48px;
+  text-align: center;
+  color: var(--ink-2);
+  font-style: italic;
+  font-family: 'Fraunces', serif;
+}
+
+/* Stat list (within cards) */
+.stat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.stat-row:last-child { border-bottom: none; }
+.stat-row .label { color: var(--ink); font-weight: 500; }
+.stat-row .value {
+  font-family: 'Fraunces', serif;
+  color: var(--plum);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.stat-row .bar {
+  height: 4px;
+  background: var(--line);
+  margin-top: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+.stat-row .bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--plum), var(--rose));
+}
+
+/* Highlight box */
+.highlight {
+  background: linear-gradient(135deg, var(--plum) 0%, var(--wine) 100%);
+  color: var(--paper);
+  padding: 28px 32px;
+  position: relative;
+  overflow: hidden;
+}
+.highlight::after {
+  content: '';
+  position: absolute;
+  right: -80px;
+  bottom: -80px;
+  width: 200px; height: 200px;
+  border: 1px solid rgba(212, 169, 110, 0.3);
+  border-radius: 50%;
+}
+.highlight::before {
+  content: '';
+  position: absolute;
+  right: -120px;
+  bottom: -120px;
+  width: 280px; height: 280px;
+  border: 1px solid rgba(212, 169, 110, 0.2);
+  border-radius: 50%;
+}
+.highlight .eyebrow {
+  font-family: 'Fraunces', serif;
+  font-style: italic;
+  color: var(--gold-2);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.highlight .big {
+  font-family: 'Fraunces', serif;
+  font-weight: 400;
+  font-size: 30px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.highlight .big em { font-style: italic; font-weight: 300; }
+.highlight .meta {
+  font-size: 13px;
+  color: var(--cream);
+  opacity: 0.85;
+  position: relative;
+  z-index: 2;
+}
+
+/* Responsive */
+@media (max-width: 960px) {
+  header.shell { flex-direction: column; align-items: flex-start; padding: 20px 24px; }
+  .dashboard { padding: 24px; }
+  .kpis { grid-template-columns: repeat(2, 1fr); }
+  .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  .chips { flex-wrap: wrap; }
+  .upload-card { padding: 40px 28px; }
+  .upload-card h2 { font-size: 28px; }
+}
+</style>
+</head>
+<body>
+
+<header class="shell">
+  <div class="brand">
+    <span class="mono">№ 01</span>
+    <h1>Sheitel <em>Spot</em></h1>
+    <span class="dot"></span>
+    <span class="mono">Sales Intelligence</span>
+  </div>
+  <nav class="tabs" id="tabs" style="display:none;">
+    <button class="tab active" data-view="dashboard">Overview</button>
+    <button class="tab" data-view="hair">Hair Profile</button>
+    <button class="tab" data-view="customer">Customer Profile</button>
+  </nav>
+</header>
+
+<!-- Upload Screen -->
+<section class="upload-screen" id="uploadScreen">
+  <div class="upload-card">
+    <div class="ornament">— Welcome —</div>
+    <h2>Begin with your <em>ledger</em></h2>
+    <p>Upload a CSV of your sales records. The system reads column names automatically — no specific format required.</p>
+    <label class="drop" id="drop">
+      <input type="file" id="fileInput" accept=".csv,text/csv" />
+      <div class="icon">＋</div>
+      <div class="label">Drop your CSV here, or click to browse</div>
+      <div class="hint">Supported: first/last name, type, color, length, address, age, price, cost, discount, referred by, date</div>
+    </label>
+  </div>
+</section>
+
+<!-- Dashboard -->
+<main class="dashboard" id="dashboardRoot">
+
+  <div class="time-bar">
+    <div class="time-label">Showing data for —</div>
+    <div class="chips" id="rangeChips">
+      <button class="chip" data-range="7">7 days</button>
+      <button class="chip" data-range="30">30 days</button>
+      <button class="chip" data-range="60">60 days</button>
+      <button class="chip" data-range="180">180 days</button>
+      <button class="chip" data-range="365">1 year</button>
+      <button class="chip active" data-range="all">All time</button>
+    </div>
+    <div class="file-info">
+      <span id="fileName"></span>
+      &nbsp;·&nbsp;
+      <button id="resetBtn">Upload new file</button>
+    </div>
+  </div>
+
+  <div id="missingFieldNotice"></div>
+
+  <!-- VIEW: OVERVIEW -->
+  <div class="view" id="view-dashboard">
+    <div class="kpis">
+      <div class="kpi">
+        <div class="eyebrow">total revenue</div>
+        <div class="number" id="kpiRevenue">—</div>
+        <div class="sub" id="kpiRevenueSub"></div>
+      </div>
+      <div class="kpi">
+        <div class="eyebrow">transactions</div>
+        <div class="number" id="kpiTx">—</div>
+        <div class="sub" id="kpiTxSub"></div>
+      </div>
+      <div class="kpi">
+        <div class="eyebrow">unique customers</div>
+        <div class="number" id="kpiCust">—</div>
+        <div class="sub" id="kpiCustSub"></div>
+      </div>
+      <div class="kpi">
+        <div class="eyebrow">avg. order value</div>
+        <div class="number" id="kpiAOV">—</div>
+        <div class="sub" id="kpiAOVSub"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Sales <em>over time</em></h3>
+        <span class="sub">grouped automatically by day, week, or month</span>
+      </div>
+      <div class="chart-wrap tall"><canvas id="chartTimeline"></canvas></div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Top <em>referral sources</em></h3>
+          <span class="sub">how customers find you</span>
+        </div>
+        <div id="referralList" class="stat-list"></div>
+      </div>
+      <div class="card highlight">
+        <div class="eyebrow">profit snapshot</div>
+        <div class="big" id="profitNumber">—</div>
+        <div class="meta" id="profitSub"></div>
+        <div style="height: 18px;"></div>
+        <div class="eyebrow">avg. discount given</div>
+        <div class="big" id="discountNumber" style="font-size: 22px;">—</div>
+        <div class="meta" id="discountSub"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: HAIR -->
+  <div class="view" id="view-hair" style="display:none;">
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Most <em>popular</em> types</h3>
+          <span class="sub">by units sold</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartTypePopular"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Most <em>profitable</em> types</h3>
+          <span class="sub">total profit (price − cost − discount)</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartTypeProfit"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Color <em>preferences</em></h3>
+          <span class="sub">share of total sales</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartColors"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Length <em>distribution</em></h3>
+          <span class="sub">in inches</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartLengths"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <h3>Type <em>economics</em></h3>
+        <span class="sub">unit count, average price, margin per type</span>
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="elegant" id="typeTable"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW: CUSTOMER -->
+  <div class="view" id="view-customer" style="display:none;">
+    <div class="card" style="padding: 0;">
+      <div class="card-head" style="padding: 24px 32px 14px;">
+        <h3>Geographic <em>distribution</em></h3>
+        <span class="sub">Chicago metro by ZIP code · rest of nation by state · click for details</span>
+      </div>
+      <div id="map"></div>
+      <div class="map-legend">
+        <span class="legend-label">Cooler</span>
+        <div class="legend-scale">
+          <span style="background:var(--c0)"></span>
+          <span style="background:var(--c1)"></span>
+          <span style="background:var(--c2)"></span>
+          <span style="background:var(--c3)"></span>
+          <span style="background:var(--c4)"></span>
+          <span style="background:var(--c5)"></span>
+        </div>
+        <span class="legend-label">Hot zones</span>
+        <span style="margin-left: 24px; font-style: italic;" id="mapMeta"></span>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-head">
+          <h3>Age <em>distribution</em></h3>
+          <span class="sub">customers by age bracket</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartAge"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Age <em>vs.</em> spend</h3>
+          <span class="sub">does age predict basket size?</span>
+        </div>
+        <div class="chart-wrap"><canvas id="chartAgeSpend"></canvas></div>
+      </div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card highlight">
+        <div class="eyebrow">average purchase age</div>
+        <div class="big" id="avgAge">—</div>
+        <div class="meta" id="avgAgeSub"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Top <em>cities</em></h3>
+        </div>
+        <div id="cityList" class="stat-list"></div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h3>Top <em>ZIP codes</em></h3>
+        </div>
+        <div id="zipList" class="stat-list"></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+/* ============================================================
+   FIELD DETECTION & DATA NORMALIZATION
+   ============================================================ */
+const FIELD_ALIASES = {
+  firstName:   ['first_name','firstname','first','fname','given_name','given'],
+  lastName:    ['last_name','lastname','last','lname','surname','family_name'],
+  fullName:    ['full_name','fullname','name','customer_name','client_name'],
+  date:        ['purchase_date','date','transaction_date','sale_date','sold_date','order_date','purchased','purchase_dt'],
+  type:        ['type','hair_type','sheitel_type','product_type','category','style'],
+  color:       ['color','colour','hair_color','shade','hair_colour','tone'],
+  length:      ['length','hair_length','inches','len','length_inches'],
+  address:     ['address','street','street_address','addr','address_1','address1'],
+  city:        ['city','town','locality'],
+  state:       ['state','st','province','region'],
+  zip:         ['zip','zipcode','zip_code','postal_code','postal','postcode'],
+  age:         ['age','customer_age','purchaser_age','buyer_age','client_age'],
+  price:       ['price','sale_price','retail_price','total','amount','revenue','sold_for','sales'],
+  cost:        ['cost','wholesale','wholesale_cost','cogs','cost_of_goods'],
+  discount:    ['discount','discount_amount','off','discount_given','markdown'],
+  referredBy:  ['referred_by','referrer','referral','referral_source','source','how_heard'],
+};
+
+function normalizeKey(k) {
+  return String(k || '').trim().toLowerCase().replace(/[\s\-\.]+/g, '_');
+}
+
+function detectFields(rows) {
+  if (!rows || !rows.length) return {};
+  const headers = Object.keys(rows[0]);
+  const map = {};
+  for (const [canonical, aliases] of Object.entries(FIELD_ALIASES)) {
+    for (const h of headers) {
+      const nk = normalizeKey(h);
+      if (aliases.includes(nk) || nk === normalizeKey(canonical)) {
+        map[canonical] = h;
+        break;
+      }
+    }
+  }
+  return map;
+}
+
+function getField(row, fields, name) {
+  const k = fields[name];
+  if (!k) return null;
+  const v = row[k];
+  if (v === undefined || v === null || v === '') return null;
+  return v;
+}
+
+function toNumber(v) {
+  if (v === null || v === undefined || v === '') return null;
+  if (typeof v === 'number') return v;
+  const cleaned = String(v).replace(/[,$\s]/g, '');
+  const n = parseFloat(cleaned);
+  return isFinite(n) ? n : null;
+}
+
+function toDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v) ? null : v;
+  const d = new Date(v);
+  return isNaN(d) ? null : d;
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+const STATE = {
+  raw: [],
+  fields: {},
+  rangeDays: 'all',
+  filtered: [],
+  charts: {},
+  map: null,
+  mapLayers: { states: null, zips: null },
+  geoStates: null,
+  geoIlZips: null,
+};
+
+/* ============================================================
+   PARSE FLOW
+   ============================================================ */
+function handleFile(file) {
+  document.getElementById('fileName').textContent = file.name;
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: h => h.trim(),
+    complete: results => {
+      try {
+        STATE.raw = results.data.filter(r => Object.values(r).some(v => v !== '' && v !== null && v !== undefined));
+        STATE.fields = detectFields(STATE.raw);
+        if (!STATE.raw.length) {
+          alert('The CSV appears to be empty.');
+          return;
+        }
+        showDashboard();
+        showMissingFieldNotice();
+        applyRange();
+      } catch (e) {
+        console.error(e);
+        alert('Could not parse this CSV: ' + e.message);
+      }
+    },
+    error: err => {
+      console.error(err);
+      alert('Could not read this file: ' + err.message);
+    }
+  });
+}
+
+function showDashboard() {
+  document.getElementById('uploadScreen').style.display = 'none';
+  document.getElementById('dashboardRoot').classList.add('active');
+  document.getElementById('tabs').style.display = 'flex';
+}
+
+function showMissingFieldNotice() {
+  const expected = ['firstName','lastName','date','type','color','length','zip','age','price','cost','discount','referredBy'];
+  const missing = expected.filter(f => !STATE.fields[f]);
+  const node = document.getElementById('missingFieldNotice');
+  if (!missing.length) {
+    node.innerHTML = '';
+    return;
+  }
+  const friendly = {
+    firstName:'first name', lastName:'last name', date:'purchase date',
+    type:'hair type', color:'color', length:'length',
+    zip:'ZIP code', age:'customer age', price:'price', cost:'cost',
+    discount:'discount', referredBy:'referral source'
+  };
+  node.innerHTML = `<div class="notice"><strong>Note —</strong> these columns weren't found in your CSV: ${missing.map(m => friendly[m]).join(', ')}. Charts that need them will be skipped gracefully.</div>`;
+}
+
+/* ============================================================
+   RANGE FILTER
+   ============================================================ */
+function applyRange() {
+  const days = STATE.rangeDays;
+  if (days === 'all' || !STATE.fields.date) {
+    STATE.filtered = STATE.raw.slice();
+  } else {
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - parseInt(days, 10));
+    STATE.filtered = STATE.raw.filter(r => {
+      const d = toDate(getField(r, STATE.fields, 'date'));
+      return d && d >= cutoff;
+    });
+  }
+  renderAll();
+}
+
+document.getElementById('rangeChips').addEventListener('click', e => {
+  if (!e.target.classList.contains('chip')) return;
+  document.querySelectorAll('#rangeChips .chip').forEach(c => c.classList.remove('active'));
+  e.target.classList.add('active');
+  STATE.rangeDays = e.target.dataset.range;
+  applyRange();
+});
+
+document.getElementById('tabs').addEventListener('click', e => {
+  if (!e.target.classList.contains('tab')) return;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  e.target.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+  document.getElementById('view-' + e.target.dataset.view).style.display = '';
+  // Map needs to invalidate size when revealed
+  if (e.target.dataset.view === 'customer' && STATE.map) {
+    setTimeout(() => STATE.map.invalidateSize(), 100);
+  }
+});
+
+document.getElementById('resetBtn').addEventListener('click', () => location.reload());
+
+/* ============================================================
+   FORMATTERS
+   ============================================================ */
+const fmt$ = n => n == null ? '—' : '$' + Math.round(n).toLocaleString();
+const fmt$k = n => {
+  if (n == null) return '—';
+  if (Math.abs(n) >= 1000000) return '$' + (n/1000000).toFixed(1) + 'M';
+  if (Math.abs(n) >= 1000) return '$' + (n/1000).toFixed(1) + 'k';
+  return '$' + Math.round(n).toLocaleString();
+};
+const fmtN = n => n == null ? '—' : Math.round(n).toLocaleString();
+const fmt1 = n => n == null ? '—' : Number(n).toFixed(1);
+
+/* ============================================================
+   RENDER ROOT
+   ============================================================ */
+function renderAll() {
+  destroyCharts();
+  renderKPIs();
+  renderTimeline();
+  renderReferrals();
+  renderProfit();
+  renderHair();
+  renderCustomer();
+}
+
+function destroyCharts() {
+  Object.values(STATE.charts).forEach(c => { try { c.destroy(); } catch(e){} });
+  STATE.charts = {};
+}
+
+/* ============================================================
+   KPIs
+   ============================================================ */
+function netPrice(row) {
+  const p = toNumber(getField(row, STATE.fields, 'price')) || 0;
+  const d = toNumber(getField(row, STATE.fields, 'discount')) || 0;
+  return Math.max(0, p - d);
+}
+
+function profit(row) {
+  const p = toNumber(getField(row, STATE.fields, 'price')) || 0;
+  const c = toNumber(getField(row, STATE.fields, 'cost')) || 0;
+  const d = toNumber(getField(row, STATE.fields, 'discount')) || 0;
+  return p - c - d;
+}
+
+function customerKey(row) {
+  const fn = getField(row, STATE.fields, 'firstName');
+  const ln = getField(row, STATE.fields, 'lastName');
+  const full = getField(row, STATE.fields, 'fullName');
+  if (fn && ln) return (fn + ' ' + ln).toLowerCase().trim();
+  if (full) return String(full).toLowerCase().trim();
+  // fall back to address+age combo
+  const addr = getField(row, STATE.fields, 'address') || '';
+  const age = getField(row, STATE.fields, 'age') || '';
+  return (addr + '|' + age).toLowerCase();
+}
+
+function renderKPIs() {
+  const data = STATE.filtered;
+  const totalRev = data.reduce((s, r) => s + netPrice(r), 0);
+  const txCount = data.length;
+  const customers = new Set(data.map(customerKey).filter(k => k && k !== '|')).size;
+  const aov = txCount ? totalRev / txCount : 0;
+
+  document.getElementById('kpiRevenue').innerHTML = fmt$k(totalRev);
+  document.getElementById('kpiTx').innerHTML = fmtN(txCount);
+  document.getElementById('kpiCust').innerHTML = fmtN(customers);
+  document.getElementById('kpiAOV').innerHTML = fmt$(aov);
+
+  // Compare vs previous equivalent period
+  if (STATE.fields.date && STATE.rangeDays !== 'all') {
+    const days = parseInt(STATE.rangeDays, 10);
+    const now = new Date();
+    const start = new Date(now); start.setDate(start.getDate() - days);
+    const prevStart = new Date(start); prevStart.setDate(prevStart.getDate() - days);
+    const prev = STATE.raw.filter(r => {
+      const d = toDate(getField(r, STATE.fields, 'date'));
+      return d && d >= prevStart && d < start;
+    });
+    const prevRev = prev.reduce((s, r) => s + netPrice(r), 0);
+    const prevTx = prev.length;
+    const prevCust = new Set(prev.map(customerKey).filter(k => k && k !== '|')).size;
+    const prevAOV = prevTx ? prevRev / prevTx : 0;
+    const arrow = (a, b) => {
+      if (b === 0) return '';
+      const pct = ((a - b) / b) * 100;
+      const sign = pct >= 0 ? '↑' : '↓';
+      return `<strong>${sign} ${Math.abs(pct).toFixed(0)}%</strong> vs. prior period`;
+    };
+    document.getElementById('kpiRevenueSub').innerHTML = arrow(totalRev, prevRev);
+    document.getElementById('kpiTxSub').innerHTML = arrow(txCount, prevTx);
+    document.getElementById('kpiCustSub').innerHTML = arrow(customers, prevCust);
+    document.getElementById('kpiAOVSub').innerHTML = arrow(aov, prevAOV);
+  } else {
+    ['kpiRevenueSub','kpiTxSub','kpiCustSub','kpiAOVSub'].forEach(id => document.getElementById(id).innerHTML = '<span style="color:var(--ink-2)">across all selected data</span>');
+  }
+}
+
+/* ============================================================
+   TIMELINE CHART
+   ============================================================ */
+function renderTimeline() {
+  const ctx = document.getElementById('chartTimeline').getContext('2d');
+  const fields = STATE.fields;
+  if (!fields.date) {
+    ctx.font = "italic 14px Fraunces";
+    ctx.fillStyle = '#4a3434';
+    ctx.fillText('No date column detected — timeline unavailable.', 20, 40);
+    return;
+  }
+  const data = STATE.filtered;
+  if (!data.length) return;
+
+  // Bucket size: day for ≤60 days span, week for ≤365, month otherwise
+  const dates = data.map(r => toDate(getField(r, fields, 'date'))).filter(Boolean);
+  if (!dates.length) return;
+  const min = new Date(Math.min(...dates));
+  const max = new Date(Math.max(...dates));
+  const spanDays = (max - min) / (1000 * 60 * 60 * 24);
+  let bucket = 'month';
+  if (spanDays <= 60) bucket = 'day';
+  else if (spanDays <= 400) bucket = 'week';
+
+  function bucketKey(d) {
+    if (bucket === 'day') return d.toISOString().slice(0, 10);
+    if (bucket === 'week') {
+      const w = new Date(d);
+      w.setDate(w.getDate() - w.getDay());
+      return w.toISOString().slice(0, 10);
+    }
+    return d.toISOString().slice(0, 7) + '-01';
+  }
+
+  const buckets = {};
+  for (const r of data) {
+    const d = toDate(getField(r, fields, 'date'));
+    if (!d) continue;
+    const k = bucketKey(d);
+    if (!buckets[k]) buckets[k] = { revenue: 0, count: 0 };
+    buckets[k].revenue += netPrice(r);
+    buckets[k].count += 1;
+  }
+  const sortedKeys = Object.keys(buckets).sort();
+  const labels = sortedKeys.map(k => new Date(k));
+  const revenues = sortedKeys.map(k => buckets[k].revenue);
+
+  STATE.charts.timeline = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Revenue',
+        data: revenues,
+        backgroundColor: ctx => {
+          const c = ctx.chart.ctx;
+          const g = c.createLinearGradient(0, 0, 0, 380);
+          g.addColorStop(0, '#7a1f3d');
+          g.addColorStop(1, '#c08977');
+          return g;
+        },
+        borderRadius: 0,
+        borderWidth: 0,
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      responsive: true,
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: bucket === 'day' ? 'day' : (bucket === 'week' ? 'week' : 'month') },
+          grid: { display: false },
+          ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 } }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: 'rgba(74, 30, 53, 0.06)', drawBorder: false },
+          ticks: {
+            color: '#4a3434',
+            font: { family: 'Manrope', size: 11 },
+            callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1c1010',
+          titleFont: { family: 'Fraunces', weight: '500' },
+          bodyFont: { family: 'Manrope' },
+          callbacks: {
+            label: c => 'Revenue: ' + fmt$(c.parsed.y) + '  ·  ' + buckets[sortedKeys[c.dataIndex]].count + ' tx'
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ============================================================
+   REFERRALS
+   ============================================================ */
+function renderReferrals() {
+  const node = document.getElementById('referralList');
+  const fields = STATE.fields;
+  if (!fields.referredBy) {
+    node.innerHTML = '<div class="empty">No referral source column detected.</div>';
+    return;
+  }
+  const counts = {};
+  for (const r of STATE.filtered) {
+    const v = getField(r, fields, 'referredBy');
+    const key = v ? String(v).trim() : 'Unknown';
+    if (!counts[key]) counts[key] = { count: 0, revenue: 0 };
+    counts[key].count += 1;
+    counts[key].revenue += netPrice(r);
+  }
+  const sorted = Object.entries(counts).sort((a, b) => b[1].revenue - a[1].revenue).slice(0, 8);
+  if (!sorted.length) { node.innerHTML = '<div class="empty">No data.</div>'; return; }
+  const max = sorted[0][1].revenue;
+  node.innerHTML = sorted.map(([name, v]) => `
+    <div class="stat-row">
+      <div style="flex:1;">
+        <div style="display:flex; justify-content:space-between; align-items:baseline;">
+          <span class="label">${escapeHtml(name)}</span>
+          <span class="value">${fmt$(v.revenue)}</span>
+        </div>
+        <div class="bar"><span style="width:${(v.revenue/max*100).toFixed(0)}%"></span></div>
+        <div style="font-size: 11px; color: var(--ink-2); margin-top: 4px; font-style: italic; font-family: 'Fraunces', serif;">${v.count} ${v.count===1?'sale':'sales'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   PROFIT HIGHLIGHT
+   ============================================================ */
+function renderProfit() {
+  const data = STATE.filtered;
+  const totalProfit = data.reduce((s, r) => s + profit(r), 0);
+  const totalRev = data.reduce((s, r) => s + netPrice(r), 0);
+  const margin = totalRev ? (totalProfit / totalRev * 100) : 0;
+  document.getElementById('profitNumber').innerHTML = fmt$k(totalProfit);
+  document.getElementById('profitSub').innerHTML = totalRev ? `${margin.toFixed(1)}% margin on ${fmt$k(totalRev)} of revenue` : '';
+
+  const discounted = data.filter(r => (toNumber(getField(r, STATE.fields, 'discount')) || 0) > 0);
+  const avgDiscount = discounted.length
+    ? discounted.reduce((s, r) => s + toNumber(getField(r, STATE.fields, 'discount')), 0) / discounted.length
+    : 0;
+  document.getElementById('discountNumber').innerHTML = fmt$(avgDiscount);
+  document.getElementById('discountSub').innerHTML = `given on ${discounted.length} of ${data.length} sales (${data.length ? (discounted.length/data.length*100).toFixed(0) : 0}%)`;
+}
+
+/* ============================================================
+   HAIR PROFILE
+   ============================================================ */
+function aggregateBy(data, fieldName, valueFn = () => 1) {
+  const out = {};
+  const fields = STATE.fields;
+  if (!fields[fieldName]) return out;
+  for (const r of data) {
+    const k = getField(r, fields, fieldName);
+    if (!k) continue;
+    const key = String(k).trim();
+    out[key] = (out[key] || 0) + valueFn(r);
+  }
+  return out;
+}
+
+function renderHair() {
+  renderTypePopular();
+  renderTypeProfit();
+  renderColors();
+  renderLengths();
+  renderTypeTable();
+}
+
+function renderTypePopular() {
+  const ctx = document.getElementById('chartTypePopular').getContext('2d');
+  if (!STATE.fields.type) return drawNoData(ctx, 'No type column detected');
+  const counts = aggregateBy(STATE.filtered, 'type');
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (!sorted.length) return drawNoData(ctx, 'No data');
+  STATE.charts.typePopular = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s[0]),
+      datasets: [{
+        label: 'Units sold',
+        data: sorted.map(s => s[1]),
+        backgroundColor: '#4a1e35',
+        borderRadius: 0,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { color: 'rgba(74,30,53,0.06)', drawBorder: false }, ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 } } },
+        y: { grid: { display: false }, ticks: { color: '#1c1010', font: { family: 'Fraunces', size: 12, style: 'italic' } } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function renderTypeProfit() {
+  const ctx = document.getElementById('chartTypeProfit').getContext('2d');
+  if (!STATE.fields.type) return drawNoData(ctx, 'No type column detected');
+  const profits = aggregateBy(STATE.filtered, 'type', profit);
+  const sorted = Object.entries(profits).sort((a, b) => b[1] - a[1]).slice(0, 10);
+  if (!sorted.length) return drawNoData(ctx, 'No data');
+  STATE.charts.typeProfit = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s[0]),
+      datasets: [{
+        label: 'Total profit',
+        data: sorted.map(s => Math.round(s[1])),
+        backgroundColor: '#b08350',
+        borderRadius: 0,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          grid: { color: 'rgba(74,30,53,0.06)', drawBorder: false },
+          ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 }, callback: v => '$' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0)+'k' : v) }
+        },
+        y: { grid: { display: false }, ticks: { color: '#1c1010', font: { family: 'Fraunces', size: 12, style: 'italic' } } }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: c => 'Profit: ' + fmt$(c.parsed.x) } }
+      }
+    }
+  });
+}
+
+function renderColors() {
+  const ctx = document.getElementById('chartColors').getContext('2d');
+  if (!STATE.fields.color) return drawNoData(ctx, 'No color column detected');
+  const colors = aggregateBy(STATE.filtered, 'color', netPrice);
+  const sorted = Object.entries(colors).sort((a, b) => b[1] - a[1]);
+  if (!sorted.length) return drawNoData(ctx, 'No data');
+  const palette = ['#4a1e35','#7a1f3d','#a85d4c','#c08977','#d4a96e','#b08350','#8a3d65','#6b2d4d','#a07060','#8b6f4e'];
+  STATE.charts.colors = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(s => s[0]),
+      datasets: [{
+        data: sorted.map(s => Math.round(s[1])),
+        backgroundColor: sorted.map((_, i) => palette[i % palette.length]),
+        borderColor: '#fffcf7',
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      cutout: '55%',
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            font: { family: 'Manrope', size: 11 },
+            color: '#1c1010',
+            boxWidth: 12,
+            padding: 10
+          }
+        },
+        tooltip: { callbacks: { label: c => c.label + ': ' + fmt$(c.parsed) } }
+      }
+    }
+  });
+}
+
+function renderLengths() {
+  const ctx = document.getElementById('chartLengths').getContext('2d');
+  if (!STATE.fields.length) return drawNoData(ctx, 'No length column detected');
+  const counts = {};
+  for (const r of STATE.filtered) {
+    const l = toNumber(getField(r, STATE.fields, 'length'));
+    if (l == null) continue;
+    counts[l] = (counts[l] || 0) + 1;
+  }
+  const sorted = Object.entries(counts).map(([k,v]) => [Number(k),v]).sort((a,b) => a[0]-b[0]);
+  if (!sorted.length) return drawNoData(ctx, 'No data');
+  STATE.charts.lengths = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sorted.map(s => s[0] + '"'),
+      datasets: [{
+        data: sorted.map(s => s[1]),
+        backgroundColor: '#7a1f3d',
+        borderRadius: 0,
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 } } },
+        y: { grid: { color: 'rgba(74,30,53,0.06)', drawBorder: false }, ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 } } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function renderTypeTable() {
+  const node = document.getElementById('typeTable');
+  if (!STATE.fields.type) {
+    node.innerHTML = '<tbody><tr><td class="empty">No type column detected.</td></tr></tbody>';
+    return;
+  }
+  const agg = {};
+  for (const r of STATE.filtered) {
+    const t = getField(r, STATE.fields, 'type');
+    if (!t) continue;
+    const key = String(t).trim();
+    if (!agg[key]) agg[key] = { count: 0, revenue: 0, profit: 0, cost: 0 };
+    agg[key].count += 1;
+    agg[key].revenue += netPrice(r);
+    agg[key].profit += profit(r);
+    agg[key].cost += toNumber(getField(r, STATE.fields, 'cost')) || 0;
+  }
+  const rows = Object.entries(agg).sort((a, b) => b[1].revenue - a[1].revenue);
+  if (!rows.length) { node.innerHTML = '<tbody><tr><td class="empty">No data.</td></tr></tbody>'; return; }
+  node.innerHTML = `
+    <thead><tr>
+      <th>Type</th>
+      <th class="num">Units</th>
+      <th class="num">Revenue</th>
+      <th class="num">Avg. Price</th>
+      <th class="num">Profit</th>
+      <th class="num">Margin</th>
+    </tr></thead>
+    <tbody>
+    ${rows.map(([name, v]) => `
+      <tr>
+        <td class="name">${escapeHtml(name)}</td>
+        <td class="num">${v.count}</td>
+        <td class="num">${fmt$(v.revenue)}</td>
+        <td class="num">${fmt$(v.revenue/v.count)}</td>
+        <td class="num">${fmt$(v.profit)}</td>
+        <td class="num">${v.revenue ? (v.profit/v.revenue*100).toFixed(1) + '%' : '—'}</td>
+      </tr>
+    `).join('')}
+    </tbody>
+  `;
+}
+
+/* ============================================================
+   CUSTOMER PROFILE
+   ============================================================ */
+function renderCustomer() {
+  renderAge();
+  renderAgeSpend();
+  renderAvgAge();
+  renderCityList();
+  renderZipList();
+  renderMap();
+}
+
+function renderAge() {
+  const ctx = document.getElementById('chartAge').getContext('2d');
+  if (!STATE.fields.age) return drawNoData(ctx, 'No age column detected');
+  const buckets = { '<25': 0, '25-29': 0, '30-34': 0, '35-39': 0, '40-44': 0, '45-49': 0, '50-59': 0, '60+': 0 };
+  for (const r of STATE.filtered) {
+    const a = toNumber(getField(r, STATE.fields, 'age'));
+    if (a == null) continue;
+    let k = '60+';
+    if (a < 25) k = '<25';
+    else if (a < 30) k = '25-29';
+    else if (a < 35) k = '30-34';
+    else if (a < 40) k = '35-39';
+    else if (a < 45) k = '40-44';
+    else if (a < 50) k = '45-49';
+    else if (a < 60) k = '50-59';
+    buckets[k] += 1;
+  }
+  STATE.charts.age = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(buckets),
+      datasets: [{
+        data: Object.values(buckets),
+        backgroundColor: '#4a1e35',
+        borderRadius: 0,
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 } } },
+        y: { grid: { color: 'rgba(74,30,53,0.06)', drawBorder: false }, ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 } } }
+      },
+      plugins: { legend: { display: false } }
+    }
+  });
+}
+
+function renderAgeSpend() {
+  const ctx = document.getElementById('chartAgeSpend').getContext('2d');
+  if (!STATE.fields.age || !STATE.fields.price) return drawNoData(ctx, 'Age + price needed');
+  const points = [];
+  for (const r of STATE.filtered) {
+    const a = toNumber(getField(r, STATE.fields, 'age'));
+    const p = netPrice(r);
+    if (a != null && p > 0) points.push({ x: a, y: p });
+  }
+  if (!points.length) return drawNoData(ctx, 'No data');
+  // Linear regression
+  const n = points.length;
+  const sx = points.reduce((s, p) => s + p.x, 0);
+  const sy = points.reduce((s, p) => s + p.y, 0);
+  const sxx = points.reduce((s, p) => s + p.x * p.x, 0);
+  const sxy = points.reduce((s, p) => s + p.x * p.y, 0);
+  const slope = (n * sxy - sx * sy) / (n * sxx - sx * sx);
+  const intercept = (sy - slope * sx) / n;
+  const xs = points.map(p => p.x);
+  const minX = Math.min(...xs), maxX = Math.max(...xs);
+  STATE.charts.ageSpend = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [
+        {
+          label: 'Customers',
+          data: points,
+          backgroundColor: 'rgba(74,30,53,0.45)',
+          borderColor: '#4a1e35',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+        {
+          label: 'Trend',
+          type: 'line',
+          data: [{x: minX, y: slope*minX + intercept}, {x: maxX, y: slope*maxX + intercept}],
+          borderColor: '#b08350',
+          borderWidth: 2,
+          borderDash: [4, 4],
+          pointRadius: 0,
+          fill: false,
+        }
+      ]
+    },
+    options: {
+      maintainAspectRatio: false,
+      scales: {
+        x: {
+          title: { display: true, text: 'Age', font: { family: 'Fraunces', style: 'italic', size: 12 }, color: '#4a3434' },
+          grid: { color: 'rgba(74,30,53,0.06)', drawBorder: false },
+          ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 } }
+        },
+        y: {
+          title: { display: true, text: 'Spend', font: { family: 'Fraunces', style: 'italic', size: 12 }, color: '#4a3434' },
+          grid: { color: 'rgba(74,30,53,0.06)', drawBorder: false },
+          ticks: { color: '#4a3434', font: { family: 'Manrope', size: 11 }, callback: v => '$' + (v >= 1000 ? (v/1000).toFixed(0) + 'k' : v) }
+        }
+      },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: c => c.dataset.label === 'Trend' ? null : `Age ${c.parsed.x} · ${fmt$(c.parsed.y)}`
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderAvgAge() {
+  const data = STATE.filtered;
+  if (!STATE.fields.age) {
+    document.getElementById('avgAge').textContent = '—';
+    document.getElementById('avgAgeSub').textContent = 'no age data';
+    return;
+  }
+  const ages = data.map(r => toNumber(getField(r, STATE.fields, 'age'))).filter(a => a != null);
+  if (!ages.length) { document.getElementById('avgAge').textContent = '—'; return; }
+  const avg = ages.reduce((s, a) => s + a, 0) / ages.length;
+  ages.sort((a, b) => a - b);
+  const med = ages[Math.floor(ages.length / 2)];
+  document.getElementById('avgAge').innerHTML = fmt1(avg) + '<em style="font-style:italic; font-weight:300; color: var(--gold-2);"> yrs</em>';
+  document.getElementById('avgAgeSub').textContent = `median age ${med}, ranging ${ages[0]}–${ages[ages.length-1]}`;
+}
+
+function renderCityList() {
+  const node = document.getElementById('cityList');
+  if (!STATE.fields.city) { node.innerHTML = '<div class="empty">No city column.</div>'; return; }
+  const counts = {};
+  for (const r of STATE.filtered) {
+    const c = getField(r, STATE.fields, 'city');
+    if (!c) continue;
+    const key = String(c).trim();
+    if (!counts[key]) counts[key] = { count: 0, revenue: 0 };
+    counts[key].count += 1;
+    counts[key].revenue += netPrice(r);
+  }
+  const sorted = Object.entries(counts).sort((a,b) => b[1].count - a[1].count).slice(0, 6);
+  if (!sorted.length) { node.innerHTML = '<div class="empty">No data.</div>'; return; }
+  const max = sorted[0][1].count;
+  node.innerHTML = sorted.map(([name, v]) => `
+    <div class="stat-row">
+      <div style="flex:1;">
+        <div style="display:flex; justify-content:space-between;"><span class="label">${escapeHtml(name)}</span><span class="value">${v.count}</span></div>
+        <div class="bar"><span style="width:${(v.count/max*100)}%"></span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderZipList() {
+  const node = document.getElementById('zipList');
+  if (!STATE.fields.zip) { node.innerHTML = '<div class="empty">No ZIP column.</div>'; return; }
+  const counts = {};
+  for (const r of STATE.filtered) {
+    const z = getField(r, STATE.fields, 'zip');
+    if (!z) continue;
+    const key = String(z).trim().padStart(5, '0').slice(0, 5);
+    if (!counts[key]) counts[key] = { count: 0, revenue: 0 };
+    counts[key].count += 1;
+    counts[key].revenue += netPrice(r);
+  }
+  const sorted = Object.entries(counts).sort((a,b) => b[1].revenue - a[1].revenue).slice(0, 6);
+  if (!sorted.length) { node.innerHTML = '<div class="empty">No data.</div>'; return; }
+  const max = sorted[0][1].revenue;
+  node.innerHTML = sorted.map(([name, v]) => `
+    <div class="stat-row">
+      <div style="flex:1;">
+        <div style="display:flex; justify-content:space-between;"><span class="label">${escapeHtml(name)}</span><span class="value">${fmt$(v.revenue)}</span></div>
+        <div class="bar"><span style="width:${(v.revenue/max*100)}%"></span></div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ============================================================
+   MAP
+   ============================================================ */
+const CHICAGO_METRO_ZIPS = new Set([
+  // Chicago
+  '60601','60602','60603','60604','60605','60606','60607','60608','60609','60610',
+  '60611','60612','60613','60614','60615','60616','60617','60618','60619','60620',
+  '60621','60622','60623','60624','60625','60626','60628','60629','60630','60631',
+  '60632','60633','60634','60636','60637','60638','60639','60640','60641','60642',
+  '60643','60644','60645','60646','60647','60649','60651','60652','60653','60654',
+  '60655','60656','60657','60659','60660','60661','60664','60666','60668','60669',
+  '60670','60673','60674','60675','60677','60678','60680','60681','60682','60684',
+  '60685','60686','60687','60688','60689','60690','60691','60693','60694','60695',
+  '60696','60697','60699','60701',
+  // Suburbs commonly in metro / Jewish neighborhoods
+  '60004','60005','60006','60007','60008','60009','60010','60011','60012','60013',
+  '60014','60015','60016','60017','60018','60019','60020','60021','60022','60025',
+  '60026','60029','60030','60031','60035','60037','60038','60039','60040','60041',
+  '60042','60043','60044','60045','60046','60047','60048','60053','60055','60056',
+  '60060','60061','60062','60064','60067','60068','60069','60070','60071','60074',
+  '60076','60077','60078','60079','60082','60084','60085','60087','60088','60089',
+  '60090','60091','60092','60093','60094','60095','60096','60097','60098','60099',
+  '60101','60102','60103','60104','60105','60106','60107','60108','60109','60110',
+  '60120','60121','60122','60123','60124','60126','60128','60130','60131','60132',
+  '60133','60134','60137','60138','60139','60140','60141','60142','60143','60148',
+  '60153','60154','60155','60160','60161','60162','60163','60164','60165','60168',
+  '60169','60170','60171','60172','60173','60174','60175','60176','60177','60179',
+  '60181','60184','60185','60186','60187','60188','60189','60190','60191','60192',
+  '60193','60194','60195','60196','60197','60199','60201','60202','60203','60204',
+  '60208','60209','60301','60302','60303','60304','60305','60402','60406','60409',
+  '60411','60412','60415','60417','60418','60419','60422','60423','60425','60426',
+  '60428','60429','60430','60438','60439','60443','60445','60448','60451','60452',
+  '60453','60454','60455','60456','60457','60458','60459','60461','60462','60463',
+  '60464','60465','60466','60467','60469','60471','60472','60473','60475','60476',
+  '60477','60478','60480','60481','60482','60487','60491','60499','60501','60502',
+  '60503','60504','60505','60506','60510','60511','60512','60513','60514','60515',
+  '60516','60517','60518','60519','60521','60522','60523','60525','60526','60527',
+  '60532','60534','60540','60541','60543','60544','60545','60546','60547','60548',
+  '60554','60555','60558','60559','60561','60563','60564','60565','60566','60567',
+  '60568','60569','60572','60585','60586','60597','60598','60712'
+]);
+
+function colorScale(value, max) {
+  if (!max || value === 0) return '#f0e5d3';
+  const t = Math.min(1, value / max);
+  const stops = [
+    [0.00, '#f5e6d3'],
+    [0.15, '#e9c5a3'],
+    [0.35, '#d49b76'],
+    [0.55, '#a85d4c'],
+    [0.78, '#7a1f3d'],
+    [1.00, '#4a1e35']
+  ];
+  for (let i = 1; i < stops.length; i++) {
+    if (t <= stops[i][0]) {
+      return stops[i-1][1] === stops[i][1] ? stops[i][1] : stops[i][1];
+    }
+  }
+  return stops[stops.length-1][1];
+}
+
+async function fetchWithFallback(urls) {
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) return await r.json();
+    } catch (e) { /* try next */ }
+  }
+  return null;
+}
+
+async function loadGeo() {
+  const tasks = [];
+  if (!STATE.geoStates) {
+    tasks.push(fetchWithFallback([
+      'https://cdn.jsdelivr.net/gh/PublicaMundi/MappingAPI@master/data/geojson/us-states.json',
+      'https://raw.githubusercontent.com/PublicaMundi/MappingAPI/master/data/geojson/us-states.json'
+    ]).then(j => STATE.geoStates = j));
+  }
+  if (!STATE.geoIlZips) {
+    tasks.push(fetchWithFallback([
+      'https://cdn.jsdelivr.net/gh/OpenDataDE/State-zip-code-GeoJSON@master/il_illinois_zip_codes_geo.min.json',
+      'https://raw.githubusercontent.com/OpenDataDE/State-zip-code-GeoJSON/master/il_illinois_zip_codes_geo.min.json'
+    ]).then(j => STATE.geoIlZips = j));
+  }
+  if (tasks.length) await Promise.all(tasks);
+}
+
+function showMapFallback(message) {
+  // Tear down any existing Leaflet instance so we can rebuild on retry
+  if (STATE.map) { try { STATE.map.remove(); } catch (e) {} STATE.map = null; }
+  STATE.mapLayers = { states: null, zips: null };
+  const mapEl = document.getElementById('map');
+  mapEl.innerHTML = `<div style="display:flex; align-items:center; justify-content:center; height:100%; padding:40px; text-align:center; font-family:'Fraunces',serif; font-style:italic; color:var(--ink-2); background:var(--bg-2);">
+    <div>
+      <div style="font-size:32px; color:var(--gold); margin-bottom:12px;">◇</div>
+      <div style="font-size:16px; color:var(--plum); margin-bottom:8px;">Map data unavailable</div>
+      <div style="font-size:13px;">${escapeHtml(message)}</div>
+      <div style="font-size:12px; margin-top:16px;">All other dashboard panels still work — see the ZIP and city lists below for geographic insights.</div>
+    </div>
+  </div>`;
+}
+
+async function renderMap() {
+  try {
+    await renderMapInner();
+  } catch (e) {
+    console.error('Map render failed:', e);
+    showMapFallback('Could not load geographic data: ' + e.message);
+  }
+}
+
+async function renderMapInner() {
+  // Aggregate
+  const fields = STATE.fields;
+  const byZip = {};
+  const byState = {};
+  for (const r of STATE.filtered) {
+    const z = getField(r, fields, 'zip');
+    const st = getField(r, fields, 'state');
+    const t = getField(r, fields, 'type');
+    const len = toNumber(getField(r, fields, 'length'));
+    const rev = netPrice(r);
+
+    if (st) {
+      const sk = String(st).trim().toUpperCase();
+      if (!byState[sk]) byState[sk] = { count: 0, revenue: 0, byType: {}, byLength: {} };
+      byState[sk].count += 1;
+      byState[sk].revenue += rev;
+      if (t) byState[sk].byType[t] = (byState[sk].byType[t] || 0) + 1;
+      if (len != null) byState[sk].byLength[len] = (byState[sk].byLength[len] || 0) + 1;
+    }
+    if (z) {
+      const zk = String(z).trim().padStart(5, '0').slice(0, 5);
+      if (!byZip[zk]) byZip[zk] = { count: 0, revenue: 0, byType: {}, byLength: {} };
+      byZip[zk].count += 1;
+      byZip[zk].revenue += rev;
+      if (t) byZip[zk].byType[t] = (byZip[zk].byType[t] || 0) + 1;
+      if (len != null) byZip[zk].byLength[len] = (byZip[zk].byLength[len] || 0) + 1;
+    }
+  }
+
+  // Initialize map once
+  if (!STATE.map) {
+    STATE.map = L.map('map', {
+      center: [40, -92],
+      zoom: 4,
+      preferCanvas: true,
+      zoomControl: true,
+      scrollWheelZoom: true,
+    });
+    L.tileLayer('https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_nolabels/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 18,
+      opacity: 0.55,
+    }).addTo(STATE.map);
+  }
+
+  // Clear previous
+  if (STATE.mapLayers.states) STATE.map.removeLayer(STATE.mapLayers.states);
+  if (STATE.mapLayers.zips) STATE.map.removeLayer(STATE.mapLayers.zips);
+
+  await loadGeo();
+
+  if (!STATE.geoStates && !STATE.geoIlZips) {
+    showMapFallback('The map service appears to be offline. Please check your network connection.');
+    return;
+  }
+
+  // STATES LAYER
+  if (STATE.geoStates) {
+    const stateMax = Math.max(1, ...Object.entries(byState).filter(([k]) => k !== 'IL').map(([_, v]) => v.revenue));
+
+    STATE.mapLayers.states = L.geoJson(STATE.geoStates, {
+      style: feat => {
+        const code = stateAbbr(feat.properties.name);
+        const isIL = code === 'IL';
+        const data = byState[code];
+        return {
+          fillColor: isIL ? '#e6dcc9' : (data ? colorScale(data.revenue, stateMax) : '#f3ece2'),
+          weight: 0.5,
+          opacity: 1,
+          color: '#a08570',
+          fillOpacity: isIL ? 0.4 : 0.85,
+        };
+      },
+      onEachFeature: (feat, layer) => {
+        const code = stateAbbr(feat.properties.name);
+        const data = byState[code];
+        const html = buildTooltip(feat.properties.name, code === 'IL' ? '(see ZIP-level detail)' : 'State', data);
+        layer.bindPopup(html, { maxWidth: 320, className: 'tip-popup' });
+        layer.on({
+          mouseover: e => e.target.setStyle({ weight: 2, color: '#4a1e35', fillOpacity: 0.95 }),
+          mouseout: e => STATE.mapLayers.states.resetStyle(e.target),
+        });
+      }
+    }).addTo(STATE.map);
+  }
+
+  // CHICAGO ZIP LAYER
+  if (STATE.geoIlZips) {
+    const chicagoZipFeatures = {
+      type: 'FeatureCollection',
+      features: STATE.geoIlZips.features.filter(f => {
+        const z = (f.properties.ZCTA5CE10 || f.properties.ZCTA5CE20 || f.properties.GEOID10 || '').toString();
+        return CHICAGO_METRO_ZIPS.has(z);
+      })
+    };
+    const zipMax = Math.max(1, ...Object.values(byZip).map(v => v.revenue));
+
+    STATE.mapLayers.zips = L.geoJson(chicagoZipFeatures, {
+      style: feat => {
+        const z = (feat.properties.ZCTA5CE10 || feat.properties.ZCTA5CE20 || '').toString();
+        const data = byZip[z];
+        return {
+          fillColor: data ? colorScale(data.revenue, zipMax) : '#f5e6d3',
+          weight: 0.6,
+          color: '#8a6d50',
+          fillOpacity: data ? 0.9 : 0.25,
+        };
+      },
+      onEachFeature: (feat, layer) => {
+        const z = (feat.properties.ZCTA5CE10 || feat.properties.ZCTA5CE20 || '').toString();
+        const data = byZip[z];
+        const html = buildTooltip('ZIP ' + z, 'Chicago metro', data);
+        layer.bindPopup(html, { maxWidth: 320, className: 'tip-popup' });
+        layer.on({
+          mouseover: e => e.target.setStyle({ weight: 2, color: '#4a1e35', fillOpacity: 1 }),
+          mouseout: e => STATE.mapLayers.zips.resetStyle(e.target),
+        });
+      }
+    }).addTo(STATE.map);
+  }
+
+  // Caption
+  const totalCust = Object.values(byZip).reduce((s, v) => s + v.count, 0)
+                  + Object.entries(byState).filter(([k]) => k !== 'IL').reduce((s, [_, v]) => s + v.count, 0);
+  document.getElementById('mapMeta').textContent = `${totalCust} mapped transactions across ${Object.keys(byZip).length} ZIPs and ${Object.keys(byState).length} states`;
+
+  setTimeout(() => STATE.map.invalidateSize(), 200);
+}
+
+function buildTooltip(name, locLabel, data) {
+  if (!data) {
+    return `<div class="tip">
+      <div class="tip-name">${escapeHtml(name)}</div>
+      <div class="tip-loc">${escapeHtml(locLabel)}</div>
+      <div class="tip-row" style="color:var(--ink-2); font-style:italic;">No sales recorded</div>
+    </div>`;
+  }
+  const topTypes = Object.entries(data.byType || {}).sort((a,b) => b[1]-a[1]).slice(0, 3);
+  const topLengths = Object.entries(data.byLength || {}).map(([k,v]) => [Number(k), v]).sort((a,b) => b[1]-a[1]).slice(0, 3);
+  return `<div class="tip">
+    <div class="tip-name">${escapeHtml(name)}</div>
+    <div class="tip-loc">${escapeHtml(locLabel)}</div>
+    <div class="tip-row"><span>Total revenue</span><strong>${fmt$(data.revenue)}</strong></div>
+    <div class="tip-row"><span>Transactions</span><strong>${data.count}</strong></div>
+    <div class="tip-row"><span>Avg. order</span><strong>${fmt$(data.revenue/data.count)}</strong></div>
+    ${topTypes.length ? `
+      <div class="tip-section">— Popular types —</div>
+      ${topTypes.map(([t, n]) => `<div class="tip-row"><span>${escapeHtml(t)}</span><strong>${n}</strong></div>`).join('')}
+    ` : ''}
+    ${topLengths.length ? `
+      <div class="tip-section">— Popular lengths —</div>
+      ${topLengths.map(([l, n]) => `<div class="tip-row"><span>${l}"</span><strong>${n}</strong></div>`).join('')}
+    ` : ''}
+  </div>`;
+}
+
+const STATE_NAME_TO_ABBR = {
+  'Alabama':'AL','Alaska':'AK','Arizona':'AZ','Arkansas':'AR','California':'CA','Colorado':'CO',
+  'Connecticut':'CT','Delaware':'DE','District of Columbia':'DC','Florida':'FL','Georgia':'GA',
+  'Hawaii':'HI','Idaho':'ID','Illinois':'IL','Indiana':'IN','Iowa':'IA','Kansas':'KS','Kentucky':'KY',
+  'Louisiana':'LA','Maine':'ME','Maryland':'MD','Massachusetts':'MA','Michigan':'MI','Minnesota':'MN',
+  'Mississippi':'MS','Missouri':'MO','Montana':'MT','Nebraska':'NE','Nevada':'NV','New Hampshire':'NH',
+  'New Jersey':'NJ','New Mexico':'NM','New York':'NY','North Carolina':'NC','North Dakota':'ND',
+  'Ohio':'OH','Oklahoma':'OK','Oregon':'OR','Pennsylvania':'PA','Rhode Island':'RI','South Carolina':'SC',
+  'South Dakota':'SD','Tennessee':'TN','Texas':'TX','Utah':'UT','Vermont':'VT','Virginia':'VA',
+  'Washington':'WA','West Virginia':'WV','Wisconsin':'WI','Wyoming':'WY','Puerto Rico':'PR'
+};
+function stateAbbr(name) { return STATE_NAME_TO_ABBR[name] || name; }
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function drawNoData(ctx, msg) {
+  ctx.font = "italic 14px 'Fraunces'";
+  ctx.fillStyle = '#4a3434';
+  ctx.fillText(msg || 'No data available for this view.', 20, 40);
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ============================================================
+   FILE INPUT WIRING
+   ============================================================ */
+const fileInput = document.getElementById('fileInput');
+const drop = document.getElementById('drop');
+fileInput.addEventListener('change', e => {
+  if (e.target.files[0]) handleFile(e.target.files[0]);
+});
+['dragenter','dragover'].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); })
+);
+['dragleave','drop'].forEach(ev =>
+  drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); })
+);
+drop.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+</script>
+</body>
+</html>
